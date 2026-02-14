@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="./manifest.json">
+
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DonyBurguer's">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="./icons/icon-192x192.png">
+    <title>JDP SUPREME KERNEL v13.5 - INDUSTRIAL CONTROL</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --blue: #00f2ff; --yellow: #f59e0b; --red: #ff4444; 
+            --green: #00ff88; --black: #000000; --glass: rgba(0, 0, 0, 0.85); 
+            --gold: #d4af37; --font-hud: 'Orbitron', sans-serif;
+        }
+
+        body, html {
+            margin: 0; padding: 0; background: var(--black);
+            color: white; font-family: 'Segoe UI', Roboto, sans-serif;
+            height: 100vh; overflow: hidden;
+        }
+
+        /* VIEWPORT DE MÍDIA */
+        #tv-master-viewport { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: #000; }
+        .tv-content-full { width: 100%; height: 100%; border: none; position: absolute; }
+
+        /* HUD SUPERIOR */
+        .top-command-bar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100px;
+            z-index: 5000; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 50px; background: linear-gradient(to bottom, rgba(0,0,0,0.95), transparent);
+            backdrop-filter: blur(10px); border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .stat-item-supreme { 
+            display: flex; flex-direction: column; 
+            border-left: 6px solid var(--gold); padding-left: 25px;
+            background: rgba(212, 175, 55, 0.1); padding-right: 40px; 
+            border-radius: 0 20px 20px 0;
+        }
+        .stat-item-supreme small { 
+            font-family: var(--font-hud); font-size: 12px; 
+            letter-spacing: 4px; color: var(--gold); font-weight: bold;
+        }
+        .stat-item-supreme strong { 
+            font-family: var(--font-hud); font-size: 45px; 
+            color: var(--gold); text-shadow: 0 0 20px rgba(212, 175, 55, 0.5); 
+            line-height: 1.1;
+        }
+
+        .search-zone { flex-grow: 1; display: flex; justify-content: center; max-width: 500px; }
+        .search-input-wrapper {
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--gold);
+            border-radius: 50px; padding: 12px 30px; display: flex; align-items: center;
+        }
+        .search-input-wrapper input {
+            background: transparent; border: none; color: white; font-size: 18px;
+            width: 100%; outline: none; letter-spacing: 1px;
+        }
+
+        /* NOTIFICAÇÃO */
+        #notificacao-item {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95); border: 3px solid var(--gold);
+            padding: 50px; border-radius: 30px; text-align: center;
+            z-index: 6000; display: none; backdrop-filter: blur(20px);
+            box-shadow: 0 0 100px rgba(212, 175, 55, 0.4);
+        }
+
+        /* CONTROLES */
+        .side-nav { position: fixed; bottom: 40px; right: 40px; z-index: 5500; display: flex; flex-direction: column; gap: 20px; }
+        .btn-nav {
+            width: 60px; height: 60px; border-radius: 50%; background: var(--black);
+            border: 1px solid var(--gold); color: var(--gold); cursor: pointer;
+            font-size: 22px; transition: 0.3s; display: flex; align-items: center; justify-content: center;
+        }
+        .btn-nav:hover { transform: scale(1.1); box-shadow: 0 0 20px var(--gold); }
+
+        .modal-admin {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #0a0a0a; border: 2px solid var(--gold); padding: 30px; z-index: 7000;
+            width: 350px; border-radius: 15px;
+        }
+        .admin-input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: white; margin-bottom: 10px; border-radius: 5px; box-sizing: border-box;}
+        
+        #modal-grafico { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 6500; padding: 40px; }
+    </style>
+</head>
+<body>
+
+    <div class="top-command-bar">
+        <div class="stat-item-supreme">
+            <small>SALDO REAL JDP</small>
+            <strong id="totalGeral">R$ 0,00</strong>
+        </div>
+
+        <div class="search-zone">
+            <div class="search-input-wrapper">
+                <input type="text" id="tv-input" placeholder="BUSCAR CONTEÚDO...">
+                <i class="fas fa-search" style="color:var(--gold); cursor:pointer;" onclick="ativarBusca()"></i>
+            </div>
+        </div>
+
+        <div style="text-align: right; color: var(--gold); font-family: var(--font-hud);">
+            <div style="font-size: 14px; letter-spacing: 2px;">HELENA v13.5</div>
+            <div style="font-size: 10px; opacity: 0.7;">SISTEMA CENTRAL JDP</div>
+        </div>
+    </div>
+
+    <div id="tv-master-viewport">
+        <div id="tv-engine" style="width:100%; height:100%;">
+            <div style="width:100%; height:100%; background: radial-gradient(circle, #1a1a1a, #000);"></div>
+        </div>
+    </div>
+
+    <div id="notificacao-item">
+        <small style="color:var(--gold); letter-spacing: 5px; font-weight: bold;">NOVO PEDIDO DETECTADO</small>
+        <h1 id="nome-item-scan" style="font-size: 40px; margin: 20px 0; color: #fff;">PROCESSANDO...</h1>
+        <h2 id="valor-item-scan" style="color:var(--green); font-size: 50px;">R$ 0,00</h2>
+    </div>
+
+    <div class="side-nav">
+        <button class="btn-nav" onclick="abrirGrafico()"><i class="fas fa-chart-line"></i></button>
+        <button class="btn-nav" onclick="abrirAdmin()"><i class="fas fa-key"></i></button>
+    </div>
+
+    <div id="modal-admin" class="modal-admin">
+        <h3 style="color:var(--gold); text-align:center;">PAINEL KERNEL</h3>
+        <input type="text" id="remote-url" class="admin-input" placeholder="URL VÍDEO/YOUTUBE">
+        <button onclick="executarMidia()" style="width:100%; padding:12px; background:var(--gold); border:none; font-weight:bold; cursor:pointer;">INJETAR MÍDIA</button>
+        <button onclick="zerarSaldoLocal()" style="width:100%; padding:12px; background:var(--red); color:white; border:none; font-weight:bold; margin-top: 10px; cursor:pointer;">ZERAR SALDO</button>
+        <button onclick="fecharAdmin()" style="width:100%; background:transparent; color:white; border:none; margin-top:15px; cursor:pointer;">FECHAR</button>
+    </div>
+
+    <div id="modal-grafico">
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color:var(--gold);">HISTÓRICO DE VENDAS ACUMULADAS</h2>
+            <button onclick="fecharGrafico()" style="background:var(--red); color:white; border:none; padding:10px 20px; cursor:pointer; border-radius:5px;">SAIR</button>
+        </div>
+        <div style="height: 80%;"><canvas id="chartVendas"></canvas></div>
+    </div>
+
+    <audio id="somPlim" src="https://www.myinstants.com/media/sounds/caixa-registradora-som.mp3"></audio>
+
+    <script>
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCEdXF7ScnMYz0Ce0OW-B_UJ8Bm5Pl9m8o", 
+            databaseURL: "https://dony-burguers-default-rtdb.firebaseio.com" 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let saldoAcumulado = parseFloat(localStorage.getItem('jdp_total_real')) || 0;
+        let historico = JSON.parse(localStorage.getItem('jdp_hist_v13')) || [];
+        let processados = JSON.parse(localStorage.getItem('jdp_pedidos_processados')) || [];
+        let chart;
+
+        // Atualiza o display inicial
+        document.getElementById('totalGeral').innerText = `R$ ${saldoAcumulado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+
+        // ESCUTA EM TEMPO REAL OS PEDIDOS DA COZINHA
+        db.ref('PEDIDOS_PRODUCAO').on('value', (snapshot) => {
+            const pedidos = snapshot.val();
+            if (!pedidos) return;
+
+            Object.entries(pedidos).forEach(([id, dados]) => {
+                // SÓ ACUMULA SE O ID DO PEDIDO NUNCA FOI PROCESSADO NESTA SESSÃO
+                if (!processados.includes(id)) {
+                    processados.push(id);
+                    localStorage.setItem('jdp_pedidos_processados', JSON.stringify(processados));
+
+                    // Limpa o valor (remove R$ e converte vírgula para ponto)
+                    const valorLimpo = parseFloat(dados.total.replace('R$', '').replace(',', '.'));
+                    
+                    // ACUMULA
+                    saldoAcumulado += valorLimpo;
+                    localStorage.setItem('jdp_total_real', saldoAcumulado);
+
+                    // REGISTRA NO HISTÓRICO PARA O GRÁFICO
+                    const hora = new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                    historico.push({ valor: valorLimpo, hora: hora });
+                    if(historico.length > 20) historico.shift();
+                    localStorage.setItem('jdp_hist_v13', JSON.stringify(historico));
+
+                    // INTERFACE
+                    atualizarInterface(dados.itens[0].nome, valorLimpo);
+                }
+            });
+        });
+
+        function atualizarInterface(nome, valor) {
+            document.getElementById('totalGeral').innerText = `R$ ${saldoAcumulado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('nome-item-scan').innerText = nome;
+            document.getElementById('valor-item-scan').innerText = `R$ ${valor.toFixed(2)}`;
+            
+            document.getElementById('somPlim').play().catch(() => {});
+            document.getElementById('notificacao-item').style.display = 'block';
+
+            setTimeout(() => {
+                document.getElementById('notificacao-item').style.display = 'none';
+            }, 5000);
+            
+            if(chart) atualizarGrafico();
+        }
+
+        function zerarSaldoLocal() {
+            if(confirm("ENGENHEIRO JOSÉ, CONFIRMA A ZERAGEM TOTAL?")) {
+                localStorage.setItem('jdp_total_real', 0);
+                localStorage.setItem('jdp_hist_v13', JSON.stringify([]));
+                localStorage.setItem('jdp_pedidos_processados', JSON.stringify([]));
+                location.reload();
+            }
+        }
+
+        // FUNÇÕES DA TV E MÍDIA
+        function ativarBusca() {
+            const query = document.getElementById('tv-input').value;
+            if(!query) return;
+            document.getElementById('tv-engine').innerHTML = `<iframe class="tv-content-full" src="https://www.bing.com/videos/search?q=${encodeURIComponent(query)}&FORM=VRFLTR" allow="autoplay"></iframe>`;
+        }
+
+        function executarMidia() {
+            const url = document.getElementById('remote-url').value;
+            if(!url) return;
+            const engine = document.getElementById('tv-engine');
+            if(url.includes('youtube.com') || url.includes('youtu.be')) {
+                const id = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop();
+                engine.innerHTML = `<iframe class="tv-content-full" src="https://www.youtube.com/embed/${id}?autoplay=1&mute=0" allow="autoplay"></iframe>`;
+            } else {
+                engine.innerHTML = `<video class="tv-content-full" src="${url}" autoplay loop></video>`;
+            }
+            fecharAdmin();
+        }
+
+        function abrirGrafico() { 
+            document.getElementById('modal-grafico').style.display = 'block'; 
+            const ctx = document.getElementById('chartVendas').getContext('2d');
+            if(chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: historico.map(h => h.hora),
+                    datasets: [{
+                        label: 'VENDAS R$',
+                        data: historico.map(h => h.valor),
+                        borderColor: '#d4af37',
+                        backgroundColor: 'rgba(212, 175, 55, 0.2)',
+                        fill: true, tension: 0.3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function atualizarGrafico() {
+            chart.data.labels = historico.map(h => h.hora);
+            chart.data.datasets[0].data = historico.map(h => h.valor);
+            chart.update();
+        }
+
+        function abrirAdmin() { if(prompt("SENHA DE ACESSO:") === "drkling2025") document.getElementById('modal-admin').style.display = 'block'; }
+        function fecharAdmin() { document.getElementById('modal-admin').style.display = 'none'; }
+        function fecharGrafico() { document.getElementById('modal-grafico').style.display = 'none'; }
+    </script>
+</body>
+</html>
