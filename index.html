@@ -36,24 +36,24 @@
 
         /* HUD SUPERIOR */
         .top-command-bar {
-            position: fixed; top: 0; left: 0; width: 100%; height: 97px;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100px;
             z-index: 5000; display: flex; align-items: center; justify-content: space-between;
-            padding: 0 10px; background: linear-gradient(to bottom, rgba(0,0,0,0.95), transparent);
-            backdrop-filter: blur(100px); border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+            padding: 0 50px; background: linear-gradient(to bottom, rgba(0,0,0,0.95), transparent);
+            backdrop-filter: blur(10px); border-bottom: 1px solid rgba(212, 175, 55, 0.3);
         }
 
         .stat-item-supreme { 
             display: flex; flex-direction: column; 
-            border-left: 1px solid var(--gold); padding-left: 20px;
+            border-left: 6px solid var(--gold); padding-left: 25px;
             background: rgba(212, 175, 55, 0.1); padding-right: 40px; 
             border-radius: 0 20px 20px 0;
         }
         .stat-item-supreme small { 
-            font-family: var(--font-hud); font-size: 1px; 
+            font-family: var(--font-hud); font-size: 12px; 
             letter-spacing: 4px; color: var(--gold); font-weight: bold;
         }
         .stat-item-supreme strong { 
-            font-family: var(--font-hud); font-size: 25px; 
+            font-family: var(--font-hud); font-size: 45px; 
             color: var(--gold); text-shadow: 0 0 20px rgba(212, 175, 55, 0.5); 
             line-height: 1.1;
         }
@@ -153,6 +153,29 @@
     <audio id="somPlim" src="https://www.myinstants.com/media/sounds/caixa-registradora-som.mp3"></audio>
 
     <script>
+// REGISTRO DO SERVICE WORKER COM CONTROLE DE ATUALIZAÇÃO
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').then(reg => {
+            console.log('Kernel PWA: Ativo', reg.scope);
+            
+            // Verifica se há uma atualização do sistema
+            reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed') {
+                        if (navigator.serviceWorker.controller) {
+                            console.log('Nova versão detectada. Reiniciando Kernel...');
+                            // Força a atualização para o Engenheiro não ver dados velhos
+                            window.location.reload();
+                        }
+                    }
+                };
+            };
+        }).catch(err => console.error('Falha no Kernel:', err));
+    });
+}
+
         const firebaseConfig = { 
             apiKey: "AIzaSyCEdXF7ScnMYz0Ce0OW-B_UJ8Bm5Pl9m8o", 
             databaseURL: "https://dony-burguers-default-rtdb.firebaseio.com" 
@@ -274,3 +297,4 @@
     </script>
 </body>
 </html>
+
